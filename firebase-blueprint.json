@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "CalendarEvent": {
+      "title": "Calendar Event",
+      "description": "A scheduled event from the electoral calendar.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date", "description": "The date of the event." },
+        "title": { "type": "string", "description": "Summary of the event." },
+        "description": { "type": "string", "description": "Detailed description of the rule or deadline." },
+        "month": { "type": "string", "description": "Group for display (e.g., MAIO DE 2026)." },
+        "supervisorUnit": { "type": "string", "description": "Organizational unit supervisor of this date." }
+      },
+      "required": ["date", "title", "month"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A specific action derived from a calendar event.",
+      "type": "object",
+      "properties": {
+        "eventId": { "type": "string", "description": "Reference to the CalendarEvent." },
+        "description": { "type": "string", "description": "What needs to be done." },
+        "responsible": { "type": "string", "enum": ["Corregedoria", "Zona Eleitoral", "ASCOM", "Geral"], "description": "RACI assignment." },
+        "requiresCompliance": { "type": "boolean", "description": "If zones need to report fulfillment." },
+        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Overall status." }
+      },
+      "required": ["eventId", "description", "responsible"]
+    },
+    "Zone": {
+      "title": "Electoral Zone",
+      "description": "An electoral jurisdiction unit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Zone number." },
+        "municipality": { "type": "string", "description": "City name." }
+      },
+      "required": ["id", "municipality"]
+    },
+    "ComplianceRecord": {
+      "title": "Compliance Record",
+      "description": "Tracks if a zone has fulfilled a specific task.",
+      "type": "object",
+      "properties": {
+        "zoneId": { "type": "string", "description": "Reference to Zone." },
+        "taskId": { "type": "string", "description": "Reference to Task." },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "evidenceUrl": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["zoneId", "taskId", "status"]
+    },
+    "Document": {
+      "title": "Document/Evidence",
+      "description": "A document or link attached to an event or task.",
+      "type": "object",
+      "properties": {
+        "relatedId": { "type": "string", "description": "ID of the Event, Task, or ComplianceRecord." },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "type": { "type": "string", "enum": ["file", "link"] },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ResponsibleUnit": {
+      "title": "Responsible Unit",
+      "description": "An organizational unit responsible for tasks.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "acronym": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "acronym"]
+    },
+    "Admin": {
+      "title": "Administrator",
+      "description": "A user with administrative privileges.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Google email of the administrator." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/events/{eventId}": {
+      "schema": "CalendarEvent",
+      "description": "Main electoral calendar dates."
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Activities linked to calendar dates."
+    },
+    "/zones/{zoneId}": {
+      "schema": "Zone",
+      "description": "Electoral zones registry."
+    },
+    "/compliance/{complianceId}": {
+      "schema": "ComplianceRecord",
+      "description": "Status tracking for zones."
+    },
+    "/documents/{docId}": {
+      "schema": "Document",
+      "description": "Evidence and orientation documents."
+    },
+    "/responsibleUnits/{unitId}": {
+      "schema": "ResponsibleUnit",
+      "description": "Organizational units registry."
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "List of secondary administrators."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Monitoramento do Cronograma Operacional do Cadastro",
+  "description": "Sistema de monitoramento e controle de conformidade para o cronograma operacional do cadastro eleitoral.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "Gestão de Cronograma",
+    "Checklist de Tarefas",
+    "Monitoramento de Zonas Eleitorais",
+    "Dossiê Digital de Evidências"
+  ]
+}
