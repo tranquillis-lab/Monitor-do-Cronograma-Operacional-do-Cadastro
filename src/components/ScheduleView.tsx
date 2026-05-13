@@ -30,6 +30,10 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<ResponsibleUnit[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [hidePast, setHidePast] = useState(false);
+  const [respFilter, setRespFilter] = useState('');
+  const [onlyCP, setOnlyCP] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -178,11 +182,33 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
     }
   };
 
-  const filteredEvents = events.filter(e => 
-    e.title.toLowerCase().includes(search.toLowerCase()) || 
-    e.description.toLowerCase().includes(search.toLowerCase()) ||
-    e.month.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEvents = events.filter(e => {
+    const matchesSearch = e.title.toLowerCase().includes(search.toLowerCase()) || 
+      e.description.toLowerCase().includes(search.toLowerCase()) ||
+      (e.month || '').toLowerCase().includes(search.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (hidePast) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const eventDate = new Date(e.date + 'T00:00:00');
+      if (eventDate < today) return false;
+    }
+
+    if (onlyCP && !e.isControlPoint) return false;
+
+    if (respFilter && e.supervisorUnit !== respFilter) return false;
+
+    return true;
+  });
+
+  const clearFilters = () => {
+    setSearch('');
+    setHidePast(false);
+    setRespFilter('');
+    setOnlyCP(false);
+  };
 
   // Group events by month for "Calendar" view
   const months = Array.from(new Set(events.map(e => e.month)));
@@ -232,17 +258,71 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder="Filtrar por data, descrição ou mês..." 
+                placeholder="Pesquisar por título, descrição ou mês..." 
                 className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
           </div>
-          <button className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-3 rounded-2xl text-slate-600 text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">
+          <button 
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all shadow-sm border ${
+              showAdvanced || hidePast || respFilter || onlyCP 
+                ? 'bg-blue-600 text-white border-blue-600' 
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
               <Filter size={18} />
               Filtros Avançados
+              {(hidePast || respFilter || onlyCP) && (
+                <span className="ml-1 w-2 h-2 bg-white rounded-full animate-pulse" />
+              )}
           </button>
       </div>
+
+      {showAdvanced && (
+        <div className="bg-white border border-blue-100 rounded-[2rem] p-6 shadow-xl shadow-blue-900/5 animate-in slide-in-from-top-4 duration-300 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Status Temporal</label>
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setHidePast(!hidePast)}>
+              <input 
+                type="checkbox" 
+                checked={hidePast}
+                onChange={() => {}}
+                className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs font-bold text-slate-700">Ocultar datas passadas</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Filtrar Responsável</label>
+            <select 
+              value={respFilter}
+              onChange={(e) => setRespFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            >
+              <option value="">TODOS OS RESPONSÁVEIS</option>
+              {units.map(unit => (
+                <option key={unit.id} value={unit.acronym}>{unit.acronym} - {unit.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Destaques</label>
+            <div className="flex items-center gap-3 p-3 bg-yellow-50/50 border border-yellow-100 rounded-xl cursor-pointer hover:bg-yellow-50 transition-colors" onClick={() => setOnlyCP(!onlyCP)}>
+              <input 
+                type="checkbox" 
+                checked={onlyCP}
+                onChange={() => {}}
+                className="w-5 h-5 rounded border-yellow-300 text-yellow-600 focus:ring-yellow-500"
+              />
+              <span className="text-xs font-bold text-yellow-800 uppercase tracking-tight">Apenas Pontos de Controle</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewMode === 'list' ? (
         <div className="space-y-4">
@@ -507,7 +587,12 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
               </div>
               <h3 className="text-xl font-bold text-slate-900">Nenhum resultado encontrado</h3>
               <p className="text-slate-500 max-w-sm mt-1">Tente ajustar sua pesquisa ou filtros para encontrar o que procura.</p>
-              <button className="mt-6 text-blue-600 font-bold hover:underline">Limpar Filtros</button>
+              <button 
+                onClick={clearFilters}
+                className="mt-6 text-blue-600 font-bold hover:underline"
+              >
+                Limpar Todos os Filtros
+              </button>
           </div>
       )}
     </div>
