@@ -7,16 +7,20 @@ import {
   ChevronRight,
   Filter,
   Search,
-  ArrowUpRight
+  ArrowUpRight,
+  Paperclip,
+  ExternalLink,
+  FileText,
+  Link as LinkIcon
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import { Task, CalendarEvent } from '../types';
+import { Task, CalendarEvent, Document as AppDocument } from '../types';
 import { format, isAfter, isBefore, addDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function DeadlineMonitor({ isAdmin, onSelectEvent }: { isAdmin: boolean, onSelectEvent: (id: string) => void }) {
-  const [tasks, setTasks] = useState<(Task & { eventTitle?: string, eventDate?: string })[]>([]);
+  const [tasks, setTasks] = useState<(Task & { eventTitle?: string, eventDate?: string, documents?: AppDocument[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'delayed' | 'upcoming' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,15 +40,22 @@ export default function DeadlineMonitor({ isAdmin, onSelectEvent }: { isAdmin: b
         eventsMap[doc.id] = { title: data.title, date: data.date };
       });
 
+      // Fetch all documents to link them to tasks
+      const docsSnap = await getDocs(collection(db, 'documents'));
+      const docsList = docsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppDocument));
+
       // Fetch only tasks with deadlines
       const tasksSnap = await getDocs(query(collection(db, 'tasks'), where('deadline', '!=', '')));
       let taskList = tasksSnap.docs.map(doc => {
         const data = doc.data() as Task;
+        const taskDocs = docsList.filter(d => d.relatedId === doc.id);
+        
         return {
           ...data,
           id: doc.id,
           eventTitle: eventsMap[data.eventId]?.title || 'Evento não encontrado',
-          eventDate: eventsMap[data.eventId]?.date
+          eventDate: eventsMap[data.eventId]?.date,
+          documents: taskDocs
         };
       });
 
@@ -206,12 +217,38 @@ export default function DeadlineMonitor({ isAdmin, onSelectEvent }: { isAdmin: b
                                 </td>
                                 <td className="px-6 py-6 max-w-md">
                                     <p className="text-xs font-bold text-slate-800 leading-relaxed mb-1">{task.description}</p>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase">Workflow Interno</span>
-                                        {task.requiresCompliance && (
-                                            <span className="text-[9px] font-black text-amber-500 uppercase flex items-center gap-1">
-                                                <AlertTriangle size={10} /> Evidência
-                                            </span>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-black text-slate-400 uppercase">Workflow Interno</span>
+                                            {task.requiresCompliance && (
+                                                <span className="text-[9px] font-black text-amber-500 uppercase flex items-center gap-1">
+                                                    <AlertTriangle size={10} /> Evidência Obrigatória
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Evidence Quick View */}
+                                        {task.documents && task.documents.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                                {task.documents.map(doc => (
+                                                    <a 
+                                                        key={doc.id}
+                                                        href={doc.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[9px] font-bold text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
+                                                        title={doc.name}
+                                                    >
+                                                        {doc.type === 'link' ? <LinkIcon size={10} /> : <FileText size={10} />}
+                                                        <span className="max-w-[100px] truncate">{doc.name}</span>
+                                                        <ExternalLink size={8} className="text-blue-400" />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                        
+                                        {task.requiresCompliance && (!task.documents || task.documents.length === 0) && task.status !== 'completed' && (
+                                            <p className="text-[9px] font-bold text-amber-600 italic">Pendente de comprovação</p>
                                         )}
                                     </div>
                                 </td>

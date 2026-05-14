@@ -70,9 +70,11 @@ export default function App() {
     { id: 'dashboard', label: 'Painel', icon: LayoutDashboard },
     { id: 'schedule', label: 'Cronograma', icon: Calendar },
     { id: 'deadlines', label: 'Monitor de Prazos', icon: Clock },
-    { id: 'zones', label: 'Gestão de Zonas', icon: MapPin },
-    { id: 'units', label: 'Unidades', icon: Building2 },
+    { id: 'zones', label: 'Gestão de Zonas', icon: MapPin, adminOnly: true },
+    { id: 'units', label: 'Unidades', icon: Building2, adminOnly: true },
   ];
+
+  const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   const handleSelectEvent = (id: string) => {
     setSelectedEventId(id);
@@ -84,7 +86,12 @@ export default function App() {
       console.log('Usuário Logado:', user.email);
       console.log('Status Admin:', isAdmin);
     }
-  }, [user, isAdmin]);
+    
+    // Redirect if accessing admin views without permissions
+    if (!isAdmin && (activeView === 'zones' || activeView === 'units')) {
+      setActiveView('dashboard');
+    }
+  }, [user, isAdmin, activeView]);
 
   if (loading) {
     return (
@@ -128,7 +135,7 @@ export default function App() {
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
               <div className="px-3 mb-4 mt-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Controle Central</div>
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveView(item.id as View)}
