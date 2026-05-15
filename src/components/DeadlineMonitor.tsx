@@ -113,9 +113,18 @@ export default function DeadlineMonitor({ isAdmin, onSelectEvent }: { isAdmin: b
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter mb-2">Painel de Prazos Internos</h2>
-          <p className="text-slate-500 text-sm font-medium">Monitoramento de datas intermediárias e fluxos operacionais antecipados.</p>
+        <div className="flex items-center gap-4">
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group"
+                title="Voltar ao Início"
+              >
+                <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+              </button>
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Painel de Prazos Internos</h2>
+                <p className="text-slate-500 text-sm font-medium">Monitoramento de datas intermediárias e fluxos operacionais antecipados.</p>
+              </div>
         </div>
 
         <div className="flex items-center gap-3 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">

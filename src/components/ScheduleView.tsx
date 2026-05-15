@@ -13,7 +13,9 @@ import {
   X,
   GitCommit,
   CheckCircle2,
-  Activity
+  Activity,
+  Star,
+  ChevronRight
 } from 'lucide-react';
 import { getEvents, createEvent, updateEvent, deleteEvent, getResponsibleUnits, getTasks } from '../lib/db';
 import { CalendarEvent, ResponsibleUnit, Task } from '../types';
@@ -225,9 +227,18 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Cronograma Operacional</h2>
-          <p className="text-slate-500 font-medium">Resolução TSE nº 23.750/2026 - Gestão de Marcos Temporais.</p>
+        <div className="flex items-center gap-4">
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
+              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group"
+              title="Voltar ao Início"
+            >
+              <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+            </button>
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Cronograma Operacional</h2>
+              <p className="text-slate-500 font-medium text-xs sm:text-base">Resolução TSE nº 23.750/2026 - Gestão de Marcos Temporais.</p>
+            </div>
         </div>
         <div className="flex items-center gap-3">
             <div className="bg-slate-100/50 p-1 rounded-2xl flex border border-slate-200">
@@ -497,7 +508,7 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
       )}
 
       {viewMode === 'timeline' && (
-        <div className="relative py-12 px-4 overflow-x-hidden min-h-[600px]">
+        <div className="relative py-16 px-4 overflow-x-hidden min-h-[600px] bg-slate-50/30 rounded-[3rem] mt-8">
           {(() => {
             const itemsPerRow = 3;
             const rows = [];
@@ -506,16 +517,18 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
             }
 
             return (
-              <div className="flex flex-col gap-24">
+              <div className="flex flex-col gap-32">
                 {rows.map((row, rowIndex) => (
                   <div 
                     key={rowIndex} 
-                    className={`flex flex-col md:flex-row gap-8 md:gap-16 relative items-center md:items-stretch ${rowIndex % 2 === 1 ? 'md:flex-row-reverse' : ''}`}
+                    className={`flex flex-col md:flex-row gap-8 md:gap-1 relative items-center justify-start ${rowIndex % 2 === 1 ? 'md:flex-row-reverse' : ''}`}
                   >
-                    {/* Background Thread/Line Horizontal for this row */}
-                    {row.length > 1 && (
-                      <div className="hidden md:block absolute top-[60px] left-20 right-20 h-[3px] bg-slate-200/50 -z-10 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100" />
-                    )}
+                    {/* Horizontal Connector Line for this row */}
+                    <div className={`hidden md:block absolute top-[52px] h-[4px] border-t-2 border-dashed border-blue-400/40 -z-10 ${
+                      row.length > 1 
+                        ? (rowIndex % 2 === 0 ? 'left-[16.6%] right-[16.6%]' : 'right-[16.6%] left-[16.6%]') 
+                        : 'hidden'
+                    }`} />
 
                     {row.map((event, eventIndex) => {
                       const absoluteIndex = rowIndex * itemsPerRow + eventIndex;
@@ -526,36 +539,40 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                       return (
                         <div 
                           key={event.id} 
-                          className="w-full md:w-1/3 relative z-10 animate-in zoom-in-90 duration-500"
+                          className="w-full md:w-1/3 relative z-10 animate-in zoom-in-90 duration-500 flex flex-col items-center"
                           style={{ animationDelay: `${eventIndex * 100}ms` }}
                         >
-                          {/* Vertical Connector Thread */}
+                          {/* Serpentine Vertical Connector */}
                           {isLastInRow && !isLastOverall && (
-                            <div className={`hidden md:block absolute top-[60px] h-[160px] w-[3px] bg-blue-200/50 -z-10 ${rowIndex % 2 === 0 ? '-right-8' : '-left-8'}`}>
-                               <div className={`absolute bottom-0 w-16 h-[2px] bg-blue-200/50 ${rowIndex % 2 === 0 ? 'right-0' : 'left-0'}`} />
+                            <div className={`hidden md:block absolute top-[52px] h-[190px] w-[2px] border-l-2 border-dashed border-blue-400/40 -z-10 ${rowIndex % 2 === 0 ? 'right-[50%] translate-x-[150px]' : 'left-[50%] -translate-x-[150px]'}`}>
+                               <div className={`absolute bottom-0 w-[150px] h-[2px] border-t-2 border-dashed border-blue-400/40 ${rowIndex % 2 === 0 ? 'right-0' : 'left-0'}`} />
                             </div>
                           )}
 
-                          {/* Connector Point */}
-                          <div className={`hidden md:flex absolute top-[52px] left-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-4 border-white z-20 shadow-sm ${statusColor || (event.isControlPoint ? 'bg-yellow-400' : 'bg-blue-400')}`} />
+                          {/* Connector Node */}
+                          <div className={`w-10 h-10 rounded-full border-[6px] border-white shadow-lg z-20 transition-all hover:scale-125 flex items-center justify-center ${
+                            event.isControlPoint ? 'bg-yellow-400' : 'bg-blue-500'
+                          }`}>
+                            {event.isControlPoint ? <Star size={14} className="text-white" fill="white" /> : <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </div>
 
                           {/* Event Card */}
                           <div 
                             onClick={() => onSelectEvent(event.id!)}
-                            className={`group relative mt-12 p-6 rounded-[2.5rem] border-2 transition-all cursor-pointer shadow-md hover:shadow-2xl hover:-translate-y-3 ${
+                            className={`group relative mt-10 p-6 w-[90%] rounded-[2.5rem] border-2 transition-all cursor-pointer shadow-md hover:shadow-2xl hover:-translate-y-3 ${
                               event.isControlPoint 
-                              ? 'bg-yellow-50/80 border-yellow-200 hover:border-yellow-400 backdrop-blur-sm' 
-                              : 'bg-white border-slate-100 hover:border-blue-300'
+                              ? 'bg-yellow-50/90 border-yellow-200 hover:border-yellow-400 backdrop-blur-sm' 
+                              : 'bg-white border-slate-100 hover:border-blue-400'
                             }`}
                           >
                             <div className="flex flex-col gap-3">
                               <div className="flex justify-between items-center">
                                 <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-                                  event.isControlPoint ? 'bg-yellow-400 text-yellow-900' : 'bg-blue-50 text-blue-600'
+                                  event.isControlPoint ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'bg-blue-50 text-blue-600'
                                 }`}>
                                   {format(new Date(event.date + 'T00:00:00'), "dd 'de' MMM", { locale: ptBR })}
                                 </span>
-                                {event.isControlPoint && <AlertTriangle size={14} className="text-yellow-600" />}
+                                {event.isControlPoint && <AlertTriangle size={14} className="text-yellow-600 animate-pulse" />}
                               </div>
                               
                               <h4 className="text-base font-bold text-slate-900 group-hover:text-blue-700 leading-tight transition-colors line-clamp-2 min-h-[3rem]">
@@ -563,22 +580,20 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                               </h4>
                               
                               <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed italic border-t border-slate-50 pt-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                "{event.description}"
+                                {event.description}
                               </p>
 
-                              <div className="flex items-center justify-between mt-2">
-                                <div className="flex -space-x-2">
-                                  <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-slate-400">ZE</div>
-                                  <div className="w-7 h-7 rounded-full bg-blue-50 border-2 border-white flex items-center justify-center text-[8px] font-black text-blue-400">CRE</div>
+                              <div className="flex items-center justify-between mt-2 pt-2">
+                                <div className="flex -space-x-1.5">
+                                  <div className="w-6 h-6 rounded-full bg-slate-100 border border-white flex items-center justify-center text-[7px] font-black text-slate-500">ZE</div>
+                                  <div className="w-6 h-6 rounded-full bg-blue-100 border border-white flex items-center justify-center text-[7px] font-black text-blue-600">CRE</div>
                                 </div>
-                                <Activity size={14} className="text-slate-200 group-hover:text-blue-300 transition-colors" />
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] font-black text-slate-300 uppercase letter-spacing-widest">Detalhes</span>
+                                  <ChevronRight size={10} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                                </div>
                               </div>
                             </div>
-
-                            {/* Floating Background Glow for Control Points */}
-                            {event.isControlPoint && (
-                              <div className="absolute -inset-1 bg-yellow-400/10 rounded-[2.6rem] -z-10 blur-xl animate-pulse" />
-                            )}
                           </div>
                         </div>
                       );

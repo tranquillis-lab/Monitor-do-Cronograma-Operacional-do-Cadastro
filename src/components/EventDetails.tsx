@@ -14,6 +14,7 @@ import {
   AlertCircle,
   X,
   Trash2,
+  ChevronRight,
   Link as LinkIcon
 } from 'lucide-react';
 import { 
@@ -185,14 +186,20 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-slate-400 hover:text-blue-900 transition-all w-fit group"
-        >
-            <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Retornar ao Cronograma</span>
-        </button>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-4">
+            <button 
+              onClick={onBack}
+              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-900 hover:border-blue-200 transition-all shadow-sm group"
+              title="Voltar ao Cronograma"
+            >
+              <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+            </button>
+            <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Detalhes do Evento</h2>
+              <p className="text-slate-400 text-[10px] font-black uppercase">Resolução TSE Nº 23.750/2026</p>
+            </div>
+        </div>
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col md:flex-row">
             <div className="bg-blue-900 text-white p-8 md:w-64 flex flex-col justify-between shrink-0 relative overflow-hidden">

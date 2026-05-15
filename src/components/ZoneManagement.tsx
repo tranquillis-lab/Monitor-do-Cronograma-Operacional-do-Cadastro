@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Upload, Search, MapPin, Download, Filter, CheckCircle2, AlertTriangle, MoreVertical, Activity } from 'lucide-react';
+import { Trash2, Upload, Search, MapPin, Download, Filter, CheckCircle2, AlertTriangle, MoreVertical, Activity, ChevronRight } from 'lucide-react';
 import { getZones, deleteZone, clearAllZones } from '../lib/db';
 import { Zone } from '../types';
 import { collection, addDoc, getDocs, writeBatch, doc } from 'firebase/firestore';
@@ -159,12 +159,21 @@ export default function ZoneManagement({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight italic flex items-center gap-3">
-             <MapPin className="text-blue-600" size={32} />
-             Gestão de Unidades (Zonas Eleitorais)
-          </h2>
-          <p className="text-slate-500 font-medium">Acompanhamento granular do cumprimento por município.</p>
+        <div className="flex items-center gap-4">
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group"
+                title="Voltar ao Início"
+              >
+                <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+              </button>
+              <div>
+                <h2 className="text-3xl font-bold text-slate-900 tracking-tight italic flex items-center gap-3">
+                  <MapPin className="text-blue-600" size={32} />
+                  Gestão de Unidades (Zonas Eleitorais)
+                </h2>
+                <p className="text-slate-500 font-medium">Acompanhamento granular do cumprimento por município.</p>
+              </div>
         </div>
         <div className="flex items-center gap-3">
             {isAdmin && (

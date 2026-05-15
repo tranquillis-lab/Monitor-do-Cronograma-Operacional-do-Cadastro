@@ -7,7 +7,8 @@ import {
   X, 
   Check, 
   AlertCircle,
-  Search
+  Search,
+  ChevronRight
 } from 'lucide-react';
 import { 
   getResponsibleUnits, 
@@ -109,12 +110,21 @@ export default function ResponsibleUnitsManagement({ isAdmin }: { isAdmin: boole
     <div className="flex-1 overflow-y-auto bg-slate-50 p-8 custom-scrollbar">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-              <Building2 className="text-blue-900" size={32} />
-              Unidades Responsáveis
-            </h1>
-            <p className="text-slate-500 font-medium mt-1">Gerencie os departamentos e setores encarregados das ações.</p>
+          <div className="flex items-center gap-4">
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-900 hover:border-blue-200 transition-all shadow-sm group"
+                title="Voltar ao Início"
+              >
+                <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+              </button>
+              <div>
+                <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+                  <Building2 className="text-blue-900" size={32} />
+                  Unidades Responsáveis
+                </h1>
+                <p className="text-slate-500 font-medium mt-1">Gerencie os departamentos e setores encarregados das ações.</p>
+              </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">

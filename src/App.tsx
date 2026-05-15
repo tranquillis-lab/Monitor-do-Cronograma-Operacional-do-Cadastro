@@ -93,6 +93,14 @@ export default function App() {
     }
   }, [user, isAdmin, activeView]);
 
+  useEffect(() => {
+    const handleViewChange = (e: any) => {
+      setActiveView(e.detail);
+    };
+    window.addEventListener('changeView', handleViewChange);
+    return () => window.removeEventListener('changeView', handleViewChange);
+  }, []);
+
   if (loading) {
     return (
       <div className="h-screen w-full bg-blue-900 flex flex-col items-center justify-center text-white p-6 text-center">

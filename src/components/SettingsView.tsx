@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RefreshCw, Trash2, AlertTriangle, CheckCircle2, Download, Upload, Database, ShieldCheck, Info, UserPlus, Mail, X, Plus } from 'lucide-react';
+import { RefreshCw, Trash2, AlertTriangle, CheckCircle2, Download, Upload, Database, ShieldCheck, Info, UserPlus, Mail, X, Plus, ChevronRight } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
 import { seedInitialData, exportFullBackup, restoreFullBackup, repairDataInvariants, getAdmins, addAdmin, removeAdmin } from '../lib/db';
@@ -160,6 +160,20 @@ export default function SettingsView({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
+        <div className="flex items-center gap-4">
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group"
+                title="Voltar ao Início"
+              >
+                <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+              </button>
+              <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Painel Administrativo</h2>
+                <p className="text-slate-400 text-[10px] font-black uppercase">Configurações do Sistema</p>
+              </div>
+        </div>
+
       <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/40 relative overflow-hidden">
         {/* Decorative background */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full blur-3xl -mr-32 -mt-32 opacity-50" />
