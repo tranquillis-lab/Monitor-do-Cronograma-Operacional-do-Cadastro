@@ -10,7 +10,10 @@ import {
   Trash2,
   Edit2,
   AlertTriangle,
-  X
+  X,
+  GitCommit,
+  CheckCircle2,
+  Activity
 } from 'lucide-react';
 import { getEvents, createEvent, updateEvent, deleteEvent, getResponsibleUnits, getTasks } from '../lib/db';
 import { CalendarEvent, ResponsibleUnit, Task } from '../types';
@@ -25,7 +28,7 @@ interface Props {
 
 export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline'>('list');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<ResponsibleUnit[]>([]);
@@ -226,21 +229,43 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Cronograma Operacional</h2>
           <p className="text-slate-500 font-medium">Resolução TSE nº 23.750/2026 - Gestão de Marcos Temporais.</p>
         </div>
-        <div className="flex items-center gap-2">
-            <div className="bg-white border border-slate-200 rounded-xl p-1 flex">
+        <div className="flex items-center gap-3">
+            <div className="bg-slate-100/50 p-1 rounded-2xl flex border border-slate-200">
                 <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                    <List size={20} />
+                    <List size={16} />
+                    <span>LISTA</span>
                 </button>
                 <button 
                     onClick={() => setViewMode('calendar')}
-                    className={`p-2 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'calendar' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                    <CalendarIcon size={20} />
+                    <CalendarIcon size={16} />
+                    <span>CALENDÁRIO</span>
+                </button>
+                <button 
+                    onClick={() => setViewMode('timeline')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'timeline' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <GitCommit size={16} />
+                    <span>LINHA DO TEMPO</span>
                 </button>
             </div>
+            
+            <button 
+                onClick={() => setOnlyCP(!onlyCP)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-[10px] transition-all border shadow-sm ${
+                    onlyCP 
+                    ? 'bg-yellow-400 text-yellow-900 border-yellow-500 scale-105 shadow-yellow-200' 
+                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                }`}
+            >
+                <Activity size={14} />
+                PONTOS DE CONTROLE
+            </button>
+
             {isAdmin && (
               <button 
                   onClick={() => handleOpenModal()}
@@ -324,7 +349,7 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
         </div>
       )}
 
-      {viewMode === 'list' ? (
+      {viewMode === 'list' && (
         <div className="space-y-4">
             {filteredEvents.map((event) => (
                 <div 
@@ -410,7 +435,9 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                 </div>
             ))}
         </div>
-      ) : (
+      )}
+
+      {viewMode === 'calendar' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {months.map(month => (
                 <div key={month} className="space-y-4">
@@ -466,6 +493,101 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                     ))}
                 </div>
             ))}
+        </div>
+      )}
+
+      {viewMode === 'timeline' && (
+        <div className="relative py-12 px-4 overflow-x-hidden min-h-[600px]">
+          {(() => {
+            const itemsPerRow = 3;
+            const rows = [];
+            for (let i = 0; i < filteredEvents.length; i += itemsPerRow) {
+              rows.push(filteredEvents.slice(i, i + itemsPerRow));
+            }
+
+            return (
+              <div className="flex flex-col gap-24">
+                {rows.map((row, rowIndex) => (
+                  <div 
+                    key={rowIndex} 
+                    className={`flex flex-col md:flex-row gap-8 md:gap-16 relative items-center md:items-stretch ${rowIndex % 2 === 1 ? 'md:flex-row-reverse' : ''}`}
+                  >
+                    {/* Background Thread/Line Horizontal for this row */}
+                    {row.length > 1 && (
+                      <div className="hidden md:block absolute top-[60px] left-20 right-20 h-[3px] bg-slate-200/50 -z-10 bg-gradient-to-r from-blue-100 via-blue-200 to-blue-100" />
+                    )}
+
+                    {row.map((event, eventIndex) => {
+                      const absoluteIndex = rowIndex * itemsPerRow + eventIndex;
+                      const isLastInRow = eventIndex === row.length - 1;
+                      const isLastOverall = absoluteIndex === filteredEvents.length - 1;
+                      const statusColor = getStatusColor(event);
+
+                      return (
+                        <div 
+                          key={event.id} 
+                          className="w-full md:w-1/3 relative z-10 animate-in zoom-in-90 duration-500"
+                          style={{ animationDelay: `${eventIndex * 100}ms` }}
+                        >
+                          {/* Vertical Connector Thread */}
+                          {isLastInRow && !isLastOverall && (
+                            <div className={`hidden md:block absolute top-[60px] h-[160px] w-[3px] bg-blue-200/50 -z-10 ${rowIndex % 2 === 0 ? '-right-8' : '-left-8'}`}>
+                               <div className={`absolute bottom-0 w-16 h-[2px] bg-blue-200/50 ${rowIndex % 2 === 0 ? 'right-0' : 'left-0'}`} />
+                            </div>
+                          )}
+
+                          {/* Connector Point */}
+                          <div className={`hidden md:flex absolute top-[52px] left-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-4 border-white z-20 shadow-sm ${statusColor || (event.isControlPoint ? 'bg-yellow-400' : 'bg-blue-400')}`} />
+
+                          {/* Event Card */}
+                          <div 
+                            onClick={() => onSelectEvent(event.id!)}
+                            className={`group relative mt-12 p-6 rounded-[2.5rem] border-2 transition-all cursor-pointer shadow-md hover:shadow-2xl hover:-translate-y-3 ${
+                              event.isControlPoint 
+                              ? 'bg-yellow-50/80 border-yellow-200 hover:border-yellow-400 backdrop-blur-sm' 
+                              : 'bg-white border-slate-100 hover:border-blue-300'
+                            }`}
+                          >
+                            <div className="flex flex-col gap-3">
+                              <div className="flex justify-between items-center">
+                                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                                  event.isControlPoint ? 'bg-yellow-400 text-yellow-900' : 'bg-blue-50 text-blue-600'
+                                }`}>
+                                  {format(new Date(event.date + 'T00:00:00'), "dd 'de' MMM", { locale: ptBR })}
+                                </span>
+                                {event.isControlPoint && <AlertTriangle size={14} className="text-yellow-600" />}
+                              </div>
+                              
+                              <h4 className="text-base font-bold text-slate-900 group-hover:text-blue-700 leading-tight transition-colors line-clamp-2 min-h-[3rem]">
+                                {event.title}
+                              </h4>
+                              
+                              <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed italic border-t border-slate-50 pt-3 opacity-80 group-hover:opacity-100 transition-opacity">
+                                "{event.description}"
+                              </p>
+
+                              <div className="flex items-center justify-between mt-2">
+                                <div className="flex -space-x-2">
+                                  <div className="w-7 h-7 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-slate-400">ZE</div>
+                                  <div className="w-7 h-7 rounded-full bg-blue-50 border-2 border-white flex items-center justify-center text-[8px] font-black text-blue-400">CRE</div>
+                                </div>
+                                <Activity size={14} className="text-slate-200 group-hover:text-blue-300 transition-colors" />
+                              </div>
+                            </div>
+
+                            {/* Floating Background Glow for Control Points */}
+                            {event.isControlPoint && (
+                              <div className="absolute -inset-1 bg-yellow-400/10 rounded-[2.6rem] -z-10 blur-xl animate-pulse" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
