@@ -216,7 +216,7 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
                     {event.supervisorUnit && (
                       <div className="flex items-center gap-2 text-[10px] font-black text-white uppercase tracking-widest bg-blue-700/50 px-2 py-1.5 rounded border border-blue-600/50">
                         <Users size={14} />
-                        SUPERVISÃO: {event.supervisorUnit}
+                        RESPONSÁVEL: {event.supervisorUnit}
                       </div>
                     )}
                 </div>

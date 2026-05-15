@@ -112,12 +112,12 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
               <BarChart3 className="text-blue-900" size={16} />
-              Carga Operacional por Unidade (Supervisão vs Execução)
+              Carga Operacional por Unidade (Responsável vs Execução)
             </h3>
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-sm bg-blue-900" />
-                    <span className="text-[9px] font-black text-slate-400 uppercase">Supervisão</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase">Responsável</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-sm bg-blue-400" />
@@ -152,7 +152,7 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
                         textTransform: 'uppercase'
                     }} 
                   />
-                  <Bar dataKey="supervision" name="Supervisão" fill="#1e3a8a" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="supervision" name="Responsável" fill="#1e3a8a" radius={[4, 4, 0, 0]} barSize={24} />
                   <Bar dataKey="execution" name="Execução" fill="#60a5fa" radius={[4, 4, 0, 0]} barSize={24} />
                 </BarChart>
              </ResponsiveContainer>
@@ -335,7 +335,7 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
                             <span className="text-xs font-black text-white uppercase tracking-tight">{unit.acronym}</span>
                             <div className="flex items-center gap-3">
                               <span className="text-[9px] font-black text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded uppercase tracking-widest whitespace-nowrap">
-                                Supervisão: {supervisedEvents}
+                                Responsável: {supervisedEvents}
                               </span>
                               <span className="text-[9px] font-black text-green-400 bg-green-900/40 px-2 py-0.5 rounded uppercase tracking-widest whitespace-nowrap">
                                 Execução: {taskPct}%

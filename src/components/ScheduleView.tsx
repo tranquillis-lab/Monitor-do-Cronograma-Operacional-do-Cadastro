@@ -14,8 +14,7 @@ import {
   GitCommit,
   CheckCircle2,
   Activity,
-  Star,
-  ChevronRight
+  Star
 } from 'lucide-react';
 import { getEvents, createEvent, updateEvent, deleteEvent, getResponsibleUnits, getTasks } from '../lib/db';
 import { CalendarEvent, ResponsibleUnit, Task } from '../types';
@@ -397,7 +396,7 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                                 {getDisplayMonth(event)}
                                 {event.supervisorUnit && (
                                   <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded text-[9px] font-black">
-                                    SUPERVISÃO: {event.supervisorUnit}
+                                    RESPONSÁVEL: {event.supervisorUnit}
                                   </span>
                                 )}
                             </p>
@@ -658,13 +657,13 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
 
                     <div className="space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Unidade Supervisora</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Unidade Responsável</label>
                             <select 
                                 value={formData.supervisorUnit}
                                 onChange={(e) => setFormData({...formData, supervisorUnit: e.target.value})}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all placeholder:text-slate-300"
                             >
-                                <option value="">Selecione a Unidade que Supervisiona esta Data</option>
+                                <option value="">Selecione a Unidade Responsável por esta Data</option>
                                 {units.map(unit => (
                                     <option key={unit.id} value={unit.acronym}>{unit.acronym} - {unit.name}</option>
                                 ))}
