@@ -184,11 +184,15 @@ export const getEvents = async () => {
 export const getTasks = async (eventId?: string) => {
     const path = 'tasks';
     try {
-        const q = eventId 
-            ? query(collection(db, path), where('eventId', '==', eventId))
-            : collection(db, path);
-        const snap = await getDocs(q);
-        return snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+        const snap = await getDocs(collection(db, path));
+        const allTasks = snap.docs.map(d => ({ id: d.id, ...d.data() } as Task));
+        if (eventId) {
+            return allTasks.filter(t => 
+                t.eventId === eventId || 
+                (t.eventIds && t.eventIds.includes(eventId))
+            );
+        }
+        return allTasks;
     } catch (error) {
         handleFirestoreError(error, OperationType.LIST, path);
         return [];
@@ -275,10 +279,19 @@ export const deleteEvent = async (id: string) => {
     try {
         await deleteDoc(doc(db, 'events', id));
         
-        // Delete related tasks
+        // Delete or unlink related tasks
         const tasks = await getTasks(id);
         for (const t of tasks) {
-            await deleteDoc(doc(db, 'tasks', t.id!));
+            const hasMultipleLinks = (t.eventIds && t.eventIds.length > 1);
+            if (hasMultipleLinks) {
+                const newEventIds = t.eventIds!.filter(eid => eid !== id);
+                await updateTask(t.id!, {
+                    eventIds: newEventIds,
+                    eventId: newEventIds[0] || ''
+                });
+            } else {
+                await deleteDoc(doc(db, 'tasks', t.id!));
+            }
         }
 
         // Delete related documents

@@ -14,9 +14,22 @@ import {
   GitCommit,
   CheckCircle2,
   Activity,
-  Star
+  Star,
+  CheckSquare,
+  Circle,
+  Clock
 } from 'lucide-react';
-import { getEvents, createEvent, updateEvent, deleteEvent, getResponsibleUnits, getTasks } from '../lib/db';
+import { 
+  getEvents, 
+  createEvent, 
+  updateEvent, 
+  deleteEvent, 
+  getResponsibleUnits, 
+  getTasks,
+  createTask,
+  updateTask,
+  deleteTask 
+} from '../lib/db';
 import { CalendarEvent, ResponsibleUnit, Task } from '../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,7 +42,7 @@ interface Props {
 
 export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'activities'>('list');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<ResponsibleUnit[]>([]);
@@ -50,6 +63,118 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
     supervisorUnit: '',
     isControlPoint: false
   });
+
+  // Task Modal State
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskFormData, setTaskFormData] = useState<{
+    description: string;
+    responsible: string;
+    requiresCompliance: boolean;
+    deadline: string;
+    eventIds: string[];
+  }>({
+    description: '',
+    responsible: 'Geral',
+    requiresCompliance: false,
+    deadline: '',
+    eventIds: []
+  });
+
+  const handleOpenTaskModal = (task?: Task) => {
+    if (!isAdmin) return;
+    if (task) {
+      setEditingTask(task);
+      setTaskFormData({
+        description: task.description,
+        responsible: task.responsible,
+        requiresCompliance: task.requiresCompliance,
+        deadline: task.deadline || '',
+        eventIds: task.eventIds || (task.eventId ? [task.eventId] : [])
+      });
+    } else {
+      setEditingTask(null);
+      setTaskFormData({
+        description: '',
+        responsible: units[0]?.acronym || 'Geral',
+        requiresCompliance: false,
+        deadline: '',
+        eventIds: []
+      });
+    }
+    setIsTaskModalOpen(true);
+  };
+
+  const handleSaveTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    try {
+      const primaryEventId = taskFormData.eventIds.length > 0 ? taskFormData.eventIds[0] : '';
+      
+      const payload: Omit<Task, 'id'> = {
+        eventId: primaryEventId,
+        eventIds: taskFormData.eventIds,
+        description: taskFormData.description,
+        responsible: taskFormData.responsible,
+        requiresCompliance: taskFormData.requiresCompliance,
+        status: editingTask ? editingTask.status : 'pending',
+        deadline: taskFormData.deadline || undefined
+      };
+
+      if (editingTask) {
+        await updateTask(editingTask.id!, payload);
+      } else {
+        await createTask(payload);
+      }
+
+      setIsTaskModalOpen(false);
+      await fetchTasks();
+    } catch (error) {
+      console.error('Erro ao salvar atividade:', error);
+      alert('Erro ao salvar a atividade. Verifique sua conexão ou permissões.');
+    }
+  };
+
+  const handleDeleteTaskObj = async (id: string | undefined, e: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!id) return;
+    if (!isAdmin) {
+      alert('⚠️ Acesso Negado.');
+      return;
+    }
+
+    if (window.confirm("⚠️ Tem certeza que deseja excluir permanentemente esta atividade de todas as datas?")) {
+      try {
+        await deleteTask(id);
+        await fetchTasks();
+        alert('✅ Atividade deletada com sucesso!');
+      } catch (error) {
+        console.error('Erro ao deletar atividade:', error);
+        alert('Erro ao deletar atividade.');
+      }
+    }
+  };
+
+  const handleToggleTaskStatus = async (task: Task) => {
+    if (!auth.currentUser) return;
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    await updateTask(task.id!, { status: newStatus });
+    await fetchTasks();
+  };
+
+  const handleToggleEventInTask = (eventId: string) => {
+    setTaskFormData(prev => {
+      const isSelected = prev.eventIds.includes(eventId);
+      const newEventIds = isSelected 
+        ? prev.eventIds.filter(id => id !== eventId) 
+        : [...prev.eventIds, eventId];
+      return { ...prev, eventIds: newEventIds };
+    });
+  };
 
   useEffect(() => {
     fetchData();
@@ -262,6 +387,13 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                     <GitCommit size={16} />
                     <span>LINHA DO TEMPO</span>
                 </button>
+                <button 
+                    onClick={() => setViewMode('activities')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'activities' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    <CheckSquare size={16} />
+                    <span>ATIVIDADES VINCULADAS</span>
+                </button>
             </div>
             
             <button 
@@ -278,11 +410,11 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
 
             {isAdmin && (
               <button 
-                  onClick={() => handleOpenModal()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                  onClick={() => viewMode === 'activities' ? handleOpenTaskModal() : handleOpenModal()}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/20 transition-all active:scale-95 whitespace-nowrap"
               >
                   <Plus size={18} />
-                  Novo Marco
+                  {viewMode === 'activities' ? 'Nova Atividade' : 'Novo Marco'}
               </button>
             )}
         </div>
@@ -605,6 +737,141 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
         </div>
       )}
 
+      {viewMode === 'activities' && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="bg-slate-50 border border-slate-200 rounded-[2.5rem] p-6 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Atividades e Obrigações Vinculadas</h4>
+              <p className="text-xs text-slate-500 font-medium font-sans">Crie, edite e acompanhe atividades transversais que impactam múltiplos marcos do cronograma.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {tasks
+              .filter(t => {
+                if (!search) return true;
+                const matchesDesc = t.description.toLowerCase().includes(search.toLowerCase());
+                const matchesResp = t.responsible.toLowerCase().includes(search.toLowerCase());
+                return matchesDesc || matchesResp;
+              })
+              .filter(t => !respFilter || t.responsible === respFilter)
+              .map((task) => {
+                const linkedEvents = (task.eventIds || (task.eventId ? [task.eventId] : []))
+                  .map(eid => events.find(e => e.id === eid))
+                  .filter(Boolean);
+
+                const isCompleted = task.status === 'completed';
+
+                return (
+                  <div 
+                    key={task.id}
+                    className={`p-6 rounded-[2rem] border transition-all flex flex-col gap-4 relative overflow-hidden bg-white shadow-sm hover:shadow-lg border-slate-200`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <button 
+                          onClick={() => handleToggleTaskStatus(task)}
+                          className={`mt-1 transition-colors ${
+                            isCompleted ? 'text-blue-900' : 'text-slate-300 hover:text-blue-700'
+                          } ${!auth.currentUser ? 'cursor-default opacity-50' : ''}`}
+                          disabled={!auth.currentUser}
+                        >
+                          {isCompleted ? <CheckCircle2 size={24} className="fill-blue-50" /> : <Circle size={24} />}
+                        </button>
+                        <div>
+                          <p className={`text-sm md:text-base font-bold leading-relaxed ${isCompleted ? 'text-slate-400 line-through font-normal' : 'text-slate-800 font-sans'}`}>
+                            {task.description}
+                          </p>
+                          
+                          <div className="flex flex-wrap items-center gap-2 mt-3">
+                            <span className="text-[9px] font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-tight leading-none">
+                              RESPONSÁVEL: {task.responsible}
+                            </span>
+                            {task.requiresCompliance && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black text-amber-750 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-tight leading-none">
+                                <AlertTriangle size={10} className="text-amber-600 animate-pulse" /> Evidência Obrigatória
+                              </span>
+                            )}
+                            {task.deadline && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 uppercase tracking-tight leading-none">
+                                <Clock size={10} /> Prazo: {format(new Date(task.deadline + 'T00:00:00'), 'dd/MM/yyyy')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button 
+                            onClick={() => handleOpenTaskModal(task)}
+                            className="p-2 hover:bg-blue-50 text-blue-500 rounded-lg transition-all"
+                            title="Editar Atividade"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteTaskObj(task.id, e)}
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Excluir Atividade"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4 mt-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 pl-0.5">Marcos Temporais Vinculados</p>
+                      {linkedEvents.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic pl-0.5">Sem marcos temporais vinculados.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {linkedEvents.map(evt => (
+                            <button
+                              key={evt!.id}
+                              onClick={() => onSelectEvent(evt!.id!)}
+                              className="group/btn flex items-center gap-2 bg-blue-50/50 hover:bg-blue-100/70 border border-blue-100 rounded-xl px-3 py-1.5 transition-all text-left"
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-blue-100 group-hover/btn:bg-blue-200 flex flex-col items-center justify-center text-[8px] font-black text-blue-700 uppercase leading-none shrink-0 border border-blue-200">
+                                {new Date(evt!.date + 'T00:00:00').getDate()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[10px] font-bold text-slate-700 leading-none group-hover/btn:text-blue-900 transition-colors truncate max-w-[200px]">{evt!.title.split(',')[0]}</p>
+                                <p className="text-[8px] font-medium text-slate-400 leading-none mt-0.5 uppercase tracking-wider">
+                                  {format(new Date(evt!.date + 'T00:00:00'), "MMMM 'de' yyyy", { locale: ptBR })}
+                                </p>
+                              </div>
+                              <ChevronRight size={12} className="text-slate-300 group-hover/btn:text-blue-500 group-hover/btn:translate-x-0.5 transition-all ml-1 shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {tasks.filter(t => {
+              if (!search) return true;
+              return t.description.toLowerCase().includes(search.toLowerCase()) || t.responsible.toLowerCase().includes(search.toLowerCase());
+            }).filter(t => !respFilter || t.responsible === respFilter).length === 0 && (
+              <div className="bg-white border border-slate-200 rounded-[2.5rem] p-12 text-center flex flex-col items-center justify-center">
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wide">Nenhuma atividade coincide com a pesquisa ou filtros.</p>
+                {isAdmin && !search && (
+                  <button 
+                    onClick={() => handleOpenTaskModal()}
+                    className="mt-4 inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md"
+                  >
+                    <Plus size={14} /> Cadastrar Primeira Atividade
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -716,7 +983,149 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
         </div>
       )}
 
-      {filteredEvents.length === 0 && (
+      {/* Task Modal for Activities and Multi-linking */}
+      {isTaskModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            <div className="bg-blue-900 p-6 text-white flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tight">
+                  {editingTask ? 'Editar Atividade' : 'Nova Atividade Transversal'}
+                </h3>
+                <p className="text-blue-300 text-[10px] font-bold uppercase pl-1">Vincule tarefas a uma ou mais datas do cronograma</p>
+              </div>
+              <button onClick={() => setIsTaskModalOpen(false)} className="p-2 hover:bg-blue-800 rounded-full transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTask} className="p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Descrição Integral da Atividade</label>
+                <textarea 
+                  required
+                  rows={3}
+                  value={taskFormData.description}
+                  onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+                  placeholder="Ex: Fornecer suporte sobre os novos prazos da resolução..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all placeholder:text-slate-300 resize-none font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Unidade Responsível</label>
+                  <select 
+                    value={taskFormData.responsible}
+                    onChange={(e) => setTaskFormData({ ...taskFormData, responsible: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all"
+                  >
+                    {units.map(unit => (
+                      <option key={unit.id} value={unit.acronym}>{unit.acronym} - {unit.name}</option>
+                    ))}
+                    {units.length === 0 && <option value="Geral">Geral</option>}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Prazo Interno (Opcional)</label>
+                  <input 
+                    type="date" 
+                    value={taskFormData.deadline}
+                    onChange={(e) => setTaskFormData({ ...taskFormData, deadline: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl cursor-pointer hover:bg-amber-100 transition-colors group">
+                <input 
+                  type="checkbox"
+                  checked={taskFormData.requiresCompliance}
+                  onChange={(e) => setTaskFormData({ ...taskFormData, requiresCompliance: e.target.checked })}
+                  className="w-5 h-5 rounded-md border-amber-300 text-amber-600 focus:ring-amber-500"
+                />
+                <div>
+                  <p className="text-xs font-black text-amber-900 uppercase">Ação Exige Comprovação / Evidência</p>
+                  <p className="text-[10px] text-amber-700 font-bold uppercase tracking-tight">Obrigatório anexar ofícios, circulares ou relatórios para conclusão</p>
+                </div>
+              </label>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Vincular a Marcos Temporais (Opcional)</label>
+                  <p className="text-[9px] text-slate-400 pl-1 uppercase font-bold">Esta atividade será visível / replicada nos seguintes marcos:</p>
+                </div>
+
+                <div className="border border-slate-100 rounded-2xl bg-slate-50/50 p-4 max-h-[180px] overflow-y-auto space-y-4 custom-scrollbar">
+                  {months.map(month => {
+                    const monthEvents = events.filter(e => e.month === month);
+                    if (monthEvents.length === 0) return null;
+
+                    return (
+                      <div key={month} className="space-y-1.5">
+                        <span className="text-[9px] font-black text-slate-400 tracking-wider uppercase pl-0.5 leading-none">{month}</span>
+                        <div className="grid grid-cols-1 gap-1">
+                          {monthEvents.map(evt => {
+                            const isLinked = taskFormData.eventIds.includes(evt.id!);
+                            return (
+                              <button
+                                key={evt.id}
+                                type="button"
+                                onClick={() => handleToggleEventInTask(evt.id!)}
+                                className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                                  isLinked 
+                                    ? 'bg-blue-50 border-blue-200 text-blue-950 font-bold' 
+                                    : 'bg-white border-slate-150 hover:bg-slate-50 text-slate-650'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                  <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+                                    isLinked ? 'bg-blue-700 border-blue-700 text-white' : 'border-slate-300 text-transparent bg-white'
+                                  }`}>
+                                    <svg className="w-3.5 h-3.5 stroke-current stroke-[3]" viewBox="0 0 24 24" fill="none">
+                                      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  </div>
+                                  <span className="text-xs truncate">{new Date(evt.date + 'T00:00:00').getDate()} - {evt.title.split(',')[0]}</span>
+                                </div>
+                                {evt.isControlPoint && (
+                                  <span className="bg-yellow-400 text-yellow-950 font-black text-[7px] px-1.5 py-0.5 rounded uppercase shrink-0 leading-none">CP</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {events.length === 0 && (
+                    <p className="text-xs text-slate-400 italic">Cadastre marcos temporais primeiro.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-slate-50 shrink-0">
+                <button 
+                  type="button" 
+                  onClick={() => setIsTaskModalOpen(false)}
+                  className="flex-1 px-6 py-3 border border-slate-200 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-blue-900 text-white rounded-xl font-bold text-sm shadow-xl shadow-blue-900/40 hover:bg-blue-700 transition-all active:scale-95"
+                >
+                  {editingTask ? 'Salvar Alterações' : 'Criar Atividade'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {viewMode !== 'activities' && filteredEvents.length === 0 && (
           <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center flex flex-col items-center">
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
                   <Search size={40} />

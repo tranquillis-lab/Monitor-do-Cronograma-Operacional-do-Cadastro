@@ -11,6 +11,7 @@ export interface CalendarEvent {
 export interface Task {
   id?: string;
   eventId: string;
+  eventIds?: string[]; // Multiple linked events
   description: string;
   responsible: string;
   requiresCompliance: boolean;
