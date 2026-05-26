@@ -75,12 +75,14 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
     requiresCompliance: boolean;
     deadline: string;
     eventIds: string[];
+    notes: string;
   }>({
     description: '',
     responsible: 'Geral',
     requiresCompliance: false,
     deadline: '',
-    eventIds: []
+    eventIds: [],
+    notes: ''
   });
 
   const handleOpenTaskModal = (task?: Task) => {
@@ -92,7 +94,8 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
         responsible: task.responsible,
         requiresCompliance: task.requiresCompliance,
         deadline: task.deadline || '',
-        eventIds: task.eventIds || (task.eventId ? [task.eventId] : [])
+        eventIds: task.eventIds || (task.eventId ? [task.eventId] : []),
+        notes: task.notes || ''
       });
     } else {
       setEditingTask(null);
@@ -101,7 +104,8 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
         responsible: units[0]?.acronym || 'Geral',
         requiresCompliance: false,
         deadline: '',
-        eventIds: []
+        eventIds: [],
+        notes: ''
       });
     }
     setIsTaskModalOpen(true);
@@ -121,7 +125,8 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
         responsible: taskFormData.responsible,
         requiresCompliance: taskFormData.requiresCompliance,
         status: editingTask ? editingTask.status : 'pending',
-        deadline: taskFormData.deadline || undefined
+        deadline: taskFormData.deadline || undefined,
+        notes: taskFormData.notes || undefined
       };
 
       if (editingTask) {
@@ -712,6 +717,13 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
                             {task.description}
                           </p>
                           
+                          {task.notes && (
+                            <p className="text-xs text-slate-500 mt-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 italic leading-relaxed">
+                              <span className="font-black text-slate-700 not-italic uppercase tracking-wider text-[10px] block mb-1">Observações:</span>
+                              {task.notes}
+                            </p>
+                          )}
+                          
                           <div className="flex flex-wrap items-center gap-2 mt-3">
                             <span className="text-[9px] font-black text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-tight leading-none">
                               RESPONSÁVEL: {task.responsible}
@@ -979,6 +991,17 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
                   <p className="text-[10px] text-amber-700 font-bold uppercase tracking-tight">Obrigatório anexar ofícios, circulares ou relatórios para conclusão</p>
                 </div>
               </label>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Observações / Instruções (Opcional)</label>
+                <textarea 
+                  rows={3}
+                  value={taskFormData.notes}
+                  onChange={(e) => setTaskFormData({ ...taskFormData, notes: e.target.value })}
+                  placeholder="Detalhe o escopo da ação, orientações de cumprimento ou sobre as evidências necessárias..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all placeholder:text-slate-300 resize-none font-sans"
+                />
+              </div>
 
               <div className="space-y-3">
                 <div>

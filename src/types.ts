@@ -17,6 +17,7 @@ export interface Task {
   requiresCompliance: boolean;
   status: 'pending' | 'completed';
   deadline?: string; // Internal deadline for this specific task
+  notes?: string; // Observations/notes text
 }
 
 export interface ResponsibleUnit {

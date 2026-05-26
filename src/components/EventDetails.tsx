@@ -15,7 +15,8 @@ import {
   X,
   Trash2,
   ChevronRight,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Edit2
 } from 'lucide-react';
 import { 
   getTasks, 
@@ -51,6 +52,16 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
   const [newResponsible, setNewResponsible] = useState<string>('Geral');
   const [newRequiresCompliance, setNewRequiresCompliance] = useState(false);
   const [newTaskDeadline, setNewTaskDeadline] = useState('');
+  const [newTaskNotes, setNewTaskNotes] = useState('');
+
+  // Editing Task State
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTaskText, setEditTaskText] = useState('');
+  const [editResponsible, setEditResponsible] = useState('Geral');
+  const [editRequiresCompliance, setEditRequiresCompliance] = useState(false);
+  const [editTaskDeadline, setEditTaskDeadline] = useState('');
+  const [editTaskNotes, setEditTaskNotes] = useState('');
 
   // Document Modal State
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -98,13 +109,47 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
         responsible: newResponsible,
         requiresCompliance: newRequiresCompliance,
         status: 'pending',
-        deadline: newTaskDeadline || undefined
+        deadline: newTaskDeadline || undefined,
+        notes: newTaskNotes || undefined
     };
     const created = await createTask(newTask);
     setTasks([...tasks, created]);
     setNewTaskText('');
     setNewRequiresCompliance(false);
     setNewTaskDeadline('');
+    setNewTaskNotes('');
+  };
+
+  const handleOpenEditTask = (task: Task) => {
+    if (!isAdmin) return;
+    setEditingTask(task);
+    setEditTaskText(task.description);
+    setEditResponsible(task.responsible);
+    setEditRequiresCompliance(task.requiresCompliance);
+    setEditTaskDeadline(task.deadline || '');
+    setEditTaskNotes(task.notes || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTask || !editingTask.id) return;
+    try {
+      const updatedFields: Partial<Task> = {
+        description: editTaskText,
+        responsible: editResponsible,
+        requiresCompliance: editRequiresCompliance,
+        deadline: editTaskDeadline || undefined,
+        notes: editTaskNotes || ''
+      };
+      await updateTask(editingTask.id, updatedFields);
+      setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...updatedFields } : t));
+      setIsEditModalOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Erro ao atualizar atividade:', error);
+      alert('Erro ao atualizar a atividade.');
+    }
   };
 
   const handleDeleteTask = async (id: string | undefined) => {
@@ -268,6 +313,12 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
                                 <p className={`text-xs font-bold leading-snug ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                                     {task.description}
                                 </p>
+                                {task.notes && (
+                                    <p className="text-[11px] text-slate-500 mt-1.5 bg-slate-50 p-2.5 rounded-[12px] border border-slate-100 italic leading-normal">
+                                        <span className="font-extrabold text-slate-600 not-italic uppercase tracking-wider text-[8px] block mb-0.5">Observações:</span>
+                                        {task.notes}
+                                    </p>
+                                )}
                                 <div className="flex items-center gap-2 mt-2">
                                     <span className="text-[9px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-tight">
                                         SETOR: {task.responsible}
@@ -321,18 +372,32 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
                                 </div>
                             </div>
                                   {isAdmin && (
-                                    <button 
-                                        type="button" 
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleDeleteTask(task.id);
-                                        }}
-                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100 active:scale-95 z-20"
-                                        title="Excluir"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                      <button 
+                                         type="button" 
+                                         onClick={(e) => {
+                                             e.preventDefault();
+                                             e.stopPropagation();
+                                             handleOpenEditTask(task);
+                                         }}
+                                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all active:scale-95 shadow-sm bg-white border border-slate-100"
+                                         title="Editar"
+                                      >
+                                          <Edit2 size={14} />
+                                      </button>
+                                      <button 
+                                          type="button" 
+                                          onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              handleDeleteTask(task.id);
+                                          }}
+                                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all active:scale-95 shadow-sm bg-white border border-slate-100"
+                                          title="Excluir"
+                                      >
+                                          <Trash2 size={14} />
+                                      </button>
+                                    </div>
                                   )}
                         </div>
                     ))}
@@ -387,6 +452,15 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
                                   />
                                   <span className="text-[10px] font-black text-slate-400 uppercase group-hover:text-amber-600 transition-colors">Exigir Evidência</span>
                               </label>
+                          </div>
+                          <div className="flex gap-2 px-1">
+                              <input 
+                                  type="text" 
+                                  value={newTaskNotes}
+                                  onChange={(e) => setNewTaskNotes(e.target.value)}
+                                  placeholder="Observações adicionais / Instruções específicas de cumprimento (Opcional)..." 
+                                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] outline-none transition-all placeholder:text-slate-300 font-sans focus:ring-2 focus:ring-blue-900"
+                              />
                           </div>
                       </div>
                     )}
@@ -516,6 +590,101 @@ export default function EventDetails({ eventId, isAdmin, onBack }: Props) {
                     >
                         Confirmar Anexo
                     </button>
+                </form>
+            </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border border-slate-150 animate-in zoom-in-95 duration-300">
+                <div className="bg-blue-900 p-6 text-white flex justify-between items-center">
+                    <div>
+                        <h3 className="text-lg font-black uppercase tracking-tight">Editar Desdobramento</h3>
+                        <p className="text-blue-300 text-[10px] font-bold uppercase">Gestão da Atividade / Ação</p>
+                    </div>
+                    <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-blue-800 rounded-full">
+                        <X size={20} />
+                    </button>
+                </div>
+                <form onSubmit={handleSaveEditTask} className="p-8 space-y-5">
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Descrição Integral da Atividade</label>
+                        <textarea 
+                            required
+                            rows={3}
+                            value={editTaskText}
+                            onChange={(e) => setEditTaskText(e.target.value)}
+                            placeholder="Descreva a atividade..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all placeholder:text-slate-300 resize-none font-sans"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Unidade Responsável</label>
+                            <select 
+                                value={editResponsible}
+                                onChange={(e) => setEditResponsible(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all"
+                            >
+                                {units.map(unit => (
+                                    <option key={unit.id} value={unit.acronym}>{unit.acronym}</option>
+                                ))}
+                                {units.length === 0 && <option value="Geral">Geral</option>}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Prazo Interno</label>
+                            <input 
+                                type="date"
+                                value={editTaskDeadline}
+                                onChange={(e) => setEditTaskDeadline(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    <label className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl cursor-pointer hover:bg-amber-100 transition-colors group flex">
+                        <input 
+                            type="checkbox"
+                            checked={editRequiresCompliance}
+                            onChange={(e) => setEditRequiresCompliance(e.target.checked)}
+                            className="w-5 h-5 rounded-md border-amber-300 text-amber-600 focus:ring-amber-500"
+                        />
+                        <div>
+                            <p className="text-xs font-black text-amber-900 uppercase">Ação Exige Comprovação / Evidência</p>
+                            <p className="text-[10px] text-amber-700 font-bold uppercase tracking-tight">Obrigatório anexar ofícios, circulares ou relatórios para conclusão</p>
+                        </div>
+                    </label>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Observações / Detalhes Adicionais (Opcional)</label>
+                        <textarea 
+                            rows={3}
+                            value={editTaskNotes}
+                            onChange={(e) => setEditTaskNotes(e.target.value)}
+                            placeholder="Esclareça detalhes da ação, instruções adicionais ou orientações para a evidência..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all placeholder:text-slate-300 resize-none font-sans"
+                        />
+                    </div>
+
+                    <div className="flex gap-4 pt-2">
+                        <button 
+                            type="button" 
+                            onClick={() => setIsEditModalOpen(false)}
+                            className="flex-1 px-6 py-3 border border-slate-200 rounded-xl text-slate-500 font-bold text-sm hover:bg-slate-50 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            type="submit"
+                            className="flex-1 px-6 py-3 bg-blue-900 text-white rounded-xl font-bold text-sm shadow-xl shadow-blue-900/40 hover:bg-blue-800 transition-all"
+                        >
+                            Salvar Alterações
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
