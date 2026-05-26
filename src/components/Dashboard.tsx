@@ -25,6 +25,7 @@ import { getEvents, getTasks, getResponsibleUnits } from '../lib/db';
 import { CalendarEvent, Task, ResponsibleUnit } from '../types';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import ScheduleView from './ScheduleView';
 
 export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNavigate?: (view: any) => void, onSelectEvent?: (id: string) => void, isAdmin?: boolean }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -107,107 +108,20 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Chart */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-              <BarChart3 className="text-blue-900" size={16} />
-              Carga Operacional por Unidade (Responsável vs Execução)
-            </h3>
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-sm bg-blue-900" />
-                    <span className="text-[9px] font-black text-slate-400 uppercase">Responsável</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-sm bg-blue-400" />
-                    <span className="text-[9px] font-black text-slate-400 uppercase">Execução</span>
-                </div>
-            </div>
-          </div>
-          <div className="h-[280px] w-full">
-             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={responsibleData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800, textAnchor: 'middle'}} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} 
-                  />
-                  <Tooltip 
-                    cursor={{fill: '#f8fafc'}} 
-                    contentStyle={{
-                        borderRadius: '12px', 
-                        border: '1px solid #e2e8f0', 
-                        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                        fontSize: '10px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase'
-                    }} 
-                  />
-                  <Bar dataKey="supervision" name="Responsável" fill="#1e3a8a" radius={[4, 4, 0, 0]} barSize={24} />
-                  <Bar dataKey="execution" name="Execução" fill="#60a5fa" radius={[4, 4, 0, 0]} barSize={24} />
-                </BarChart>
-             </ResponsiveContainer>
-          </div>
+        {/* Coluna Central: Marcos do Cronograma */}
+        <div className="lg:col-span-2 space-y-6">
+          <ScheduleView onSelectEvent={onSelectEvent || (() => {})} isAdmin={!!isAdmin} isEmbedded={true} />
         </div>
 
-        {/* Progress Circle */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
-            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6 self-start">Integridade Global</h3>
-            <div className="relative w-44 h-44 mb-6">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      innerRadius={55}
-                      outerRadius={75}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color === '#10b981' ? '#1e3a8a' : '#f1f5f9'} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-black text-slate-900 leading-none">82%</span>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tight mt-1">Concluído</span>
-                </div>
-            </div>
-            <div className="space-y-3 w-full border-t border-slate-50 pt-6">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tight">
-                    <span className="flex items-center gap-2 text-slate-500">
-                        <div className="w-2 h-2 rounded-full bg-blue-900 shadow-[0_0_8px_rgba(30,58,138,0.4)]" /> Cumpridas
-                    </span>
-                    <span className="text-slate-900">{tasks.filter(t => t.status === 'completed').length}</span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tight">
-                    <span className="flex items-center gap-2 text-slate-500">
-                        <div className="w-2 h-2 rounded-full bg-slate-200" /> Pendentes
-                    </span>
-                    <span className="text-slate-900">{tasks.filter(t => t.status === 'pending').length}</span>
-                </div>
-            </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Coluna Direita: Ações Críticas e Atualizações */}
+        <div className="space-y-6">
           {/* Alerts/Upcoming */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-bold mb-4 flex items-center justify-between">
-                Ações Críticas Próximas
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-tight mb-4 flex items-center justify-between">
+                <span>Ações Críticas Próximas</span>
                 <button 
                   onClick={() => onNavigate?.('schedule')}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-black uppercase tracking-widest hover:underline cursor-pointer"
+                  className="text-[10px] text-blue-600 hover:text-blue-800 font-black uppercase tracking-widest hover:underline cursor-pointer"
                 >
                   Ver todas
                 </button>
@@ -230,27 +144,31 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
                               <span className="text-[10px] font-bold text-slate-400 uppercase leading-none">{new Date(event.date).toLocaleString('pt-BR', {month: 'short'})}</span>
                               <span className="text-xl font-black text-slate-900">{new Date(event.date).getDate()}</span>
                           </div>
-                          <div className="flex-1">
-                              <p className="text-sm font-bold text-slate-900 line-clamp-1 uppercase tracking-tight">{event.title}</p>
-                              <p className="text-xs text-slate-500 line-clamp-1 font-medium">{event.description}</p>
+                          <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-900 truncate uppercase tracking-tight">{event.title}</p>
+                              <p className="text-xs text-slate-500 truncate font-medium">{event.description}</p>
                           </div>
-                          <div className="self-center">
+                          <div className="self-center shrink-0">
                               <div className={`px-2 py-1 ${diffDays === 0 && diffHours <= 48 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'} text-[10px] font-black rounded-lg whitespace-nowrap uppercase tracking-tighter`}>
-                                  {diffDays > 0 ? `${diffDays} dias ${diffHours} horas restantes` : `${diffHours} horas restantes`}
+                                  {diffDays > 0 ? `${diffDays}d ${diffHours}h` : `${diffHours}h restante`}
                               </div>
                           </div>
                       </div>
                     );
                 })}
+                {events.filter(e => new Date(e.date) > new Date()).length === 0 && (
+                  <p className="text-xs text-slate-400 italic text-center py-4">Nenhuma ação crítica pendente.</p>
+                )}
             </div>
           </div>
 
+          {/* Últimas Atualizações */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-full overflow-hidden flex flex-col">
-            <h3 className="text-lg font-bold mb-4 flex items-center justify-between">
-                Últimas Atualizações
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-tight mb-4 flex items-center justify-between">
+                <span>Últimas Atualizações</span>
                 <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
             </h3>
-            <div className="space-y-4 overflow-y-auto max-h-[350px] pr-2">
+            <div className="space-y-4 overflow-y-auto max-h-[350px] pr-2 custom-scrollbar">
                 {[...tasks.filter(t => t.status === 'completed')]
                     .filter((item: any) => item.createdAt || item.updatedAt)
                     .sort((a: any, b: any) => {
@@ -281,7 +199,7 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
                                 className="flex gap-3 items-start border-b border-slate-50 pb-4 last:border-0 hover:bg-slate-50 transition-colors rounded-lg p-2 cursor-pointer"
                             >
                                 <div className="mt-1 w-2 h-2 rounded-full flex-shrink-0 bg-blue-500" />
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-slate-900 leading-tight">
                                         {item.description}
                                     </p>
@@ -312,52 +230,7 @@ export default function Dashboard({ onNavigate, onSelectEvent, isAdmin }: { onNa
                 )}
             </div>
           </div>
-
-          {isAdmin && (
-            <div className="bg-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-xl overflow-hidden relative group">
-                <div className="relative z-10">
-                  <LucideTarget className="text-blue-400 mb-6" size={40} />
-                  <h3 className="text-2xl font-bold mb-2 italic">Métricas por Unidade</h3>
-                  <p className="text-slate-400 mb-8 max-w-xs text-sm leading-relaxed">
-                    Visão detalhada do cumprimento de metas por unidade gestora.
-                  </p>
-                  <div className="space-y-5 mb-8">
-                    {units.slice(0, 4).map((unit, i) => {
-                      const totalTasks = tasks.filter(t => t.responsible === unit.acronym).length;
-                      const doneTasks = tasks.filter(t => t.responsible === unit.acronym && t.status === 'completed').length;
-                      const taskPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
-
-                      const supervisedEvents = events.filter(e => e.supervisorUnit === unit.acronym).length;
-                      
-                      return (
-                        <div key={i} className="bg-slate-800/30 p-3 rounded-2xl border border-slate-700/50 hover:bg-slate-800/50 transition-colors">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs font-black text-white uppercase tracking-tight">{unit.acronym}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[9px] font-black text-blue-400 bg-blue-900/40 px-2 py-0.5 rounded uppercase tracking-widest whitespace-nowrap">
-                                Responsável: {supervisedEvents}
-                              </span>
-                              <span className="text-[9px] font-black text-green-400 bg-green-900/40 px-2 py-0.5 rounded uppercase tracking-widest whitespace-nowrap">
-                                Execução: {taskPct}%
-                              </span>
-                            </div>
-                          </div>
-                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                            <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${taskPct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/40">
-                    Relatório Completo
-                  </button>
-                </div>
-                <div className="absolute top-1/2 -right-20 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Users size={240} />
-                </div>
-            </div>
-          )}
+        </div>
       </div>
     </div>
   );

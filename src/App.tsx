@@ -68,7 +68,6 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Painel', icon: LayoutDashboard },
-    { id: 'schedule', label: 'Cronograma', icon: Calendar },
     { id: 'deadlines', label: 'Monitor de Prazos', icon: Clock },
     { id: 'zones', label: 'Gestão de Zonas', icon: MapPin, adminOnly: true },
     { id: 'units', label: 'Unidades', icon: Building2, adminOnly: true },
@@ -292,14 +291,13 @@ export default function App() {
                 className="flex-1 p-6"
               >
                 <div className="max-w-7xl mx-auto h-full">
-                  {activeView === 'dashboard' && (
+                  {(activeView === 'dashboard' || activeView === 'schedule') && (
                     <Dashboard 
                       onNavigate={(v) => setActiveView(v)} 
                       onSelectEvent={handleSelectEvent}
                       isAdmin={isAdmin}
                     />
                   )}
-                  {activeView === 'schedule' && <ScheduleView onSelectEvent={handleSelectEvent} isAdmin={isAdmin} />}
                   {activeView === 'zones' && <ZoneManagement isAdmin={isAdmin} />}
                   {activeView === 'units' && <ResponsibleUnitsManagement isAdmin={isAdmin} />}
                   {activeView === 'settings' && <SettingsView isAdmin={isAdmin} />}
@@ -308,7 +306,7 @@ export default function App() {
                     <EventDetails 
                       eventId={selectedEventId} 
                       isAdmin={isAdmin}
-                      onBack={() => setActiveView('schedule')} 
+                      onBack={() => setActiveView('dashboard')} 
                     />
                   )}
                 </div>

@@ -38,13 +38,15 @@ import { auth } from '../lib/firebase';
 interface Props {
   onSelectEvent: (id: string) => void;
   isAdmin: boolean;
+  isEmbedded?: boolean;
 }
 
-export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
+export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = false }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'timeline' | 'activities'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'activities'>('list');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const hasScrolledRef = React.useRef(false);
   const [units, setUnits] = useState<ResponsibleUnit[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [hidePast, setHidePast] = useState(false);
@@ -181,6 +183,23 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
     fetchUnits();
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    if (!loading && events.length > 0 && viewMode === 'list' && !hasScrolledRef.current) {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const upcoming = events.find(e => e.date >= todayStr);
+      if (upcoming) {
+        hasScrolledRef.current = true;
+        const timer = setTimeout(() => {
+          const el = document.getElementById(`event-card-${upcoming.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, viewMode, events]);
 
   async function fetchData() {
     setLoading(true);
@@ -342,6 +361,10 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
   // Group events by month for "Calendar" view
   const months = Array.from(new Set(events.map(e => e.month)));
 
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const upcomingEvent = filteredEvents.find(e => e.date >= todayStr);
+  const upcomingId = upcomingEvent?.id;
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -352,20 +375,22 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
-              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group"
-              title="Voltar ao Início"
-            >
-              <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
-            </button>
+            {!isEmbedded && (
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('changeView', { detail: 'dashboard' }))}
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm group"
+                title="Voltar ao Início"
+              >
+                <ChevronRight className="rotate-180 group-hover:-translate-x-1 transition-transform" size={20} />
+              </button>
+            )}
             <div>
-              <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Cronograma Operacional</h2>
-              <p className="text-slate-500 font-medium text-xs sm:text-base">Resolução TSE nº 23.750/2026 - Gestão de Marcos Temporais.</p>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Cronograma Operacional</h2>
+              <p className="text-slate-500 font-bold text-xs uppercase tracking-tight">Resolução TSE nº 23.750/2026</p>
             </div>
         </div>
-        <div className="flex items-center gap-3">
-            <div className="bg-slate-100/50 p-1 rounded-2xl flex border border-slate-200">
+        <div className="flex flex-wrap items-center gap-3">
+            <div className="bg-slate-100/50 p-1 rounded-2xl flex border border-slate-200 flex-wrap gap-1">
                 <button 
                     onClick={() => setViewMode('list')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}
@@ -379,13 +404,6 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                 >
                     <CalendarIcon size={16} />
                     <span>CALENDÁRIO</span>
-                </button>
-                <button 
-                    onClick={() => setViewMode('timeline')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-bold text-xs ${viewMode === 'timeline' ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <GitCommit size={16} />
-                    <span>LINHA DO TEMPO</span>
                 </button>
                 <button 
                     onClick={() => setViewMode('activities')}
@@ -496,9 +514,14 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
             {filteredEvents.map((event) => (
                 <div 
                     key={event.id}
+                    id={`event-card-${event.id}`}
                     onClick={() => onSelectEvent(event.id!)}
-                    className={`group border p-5 rounded-3xl shadow-sm hover:shadow-xl hover:border-blue-200 transition-all cursor-pointer flex flex-col md:flex-row gap-4 md:items-center relative overflow-hidden ${
-                      event.isControlPoint ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-slate-200'
+                    className={`group border p-5 rounded-3xl shadow-sm hover:shadow-xl transition-all cursor-pointer flex flex-col md:flex-row gap-4 md:items-center relative overflow-hidden ${
+                      event.id === upcomingId
+                        ? 'bg-blue-50/40 border-blue-500 ring-2 ring-blue-500 shadow-md shadow-blue-100/50'
+                        : event.isControlPoint 
+                          ? 'bg-yellow-50 border-yellow-200 hover:border-blue-200' 
+                          : 'bg-white border-slate-200 hover:border-blue-200'
                     }`}
                 >
                     {event.isControlPoint && (
@@ -519,7 +542,12 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                             <span className="text-2xl font-black text-slate-900 group-hover:text-blue-700">{new Date(event.date + 'T00:00:00').getDate()}</span>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest flex flex-wrap items-center gap-2">
+                                {event.id === upcomingId && (
+                                  <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[8px] font-black tracking-wider animate-pulse whitespace-nowrap">
+                                    🎯 PRÓXIMO MARCO A VENCER
+                                  </span>
+                                )}
                                 {event.isControlPoint && (
                                   <span className="bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded text-[9px] font-black animate-pulse">
                                     PONTO DE CONTROLE
@@ -635,105 +663,6 @@ export default function ScheduleView({ onSelectEvent, isAdmin }: Props) {
                     ))}
                 </div>
             ))}
-        </div>
-      )}
-
-      {viewMode === 'timeline' && (
-        <div className="relative py-16 px-4 overflow-x-hidden min-h-[600px] bg-slate-50/30 rounded-[3rem] mt-8">
-          {(() => {
-            const itemsPerRow = 3;
-            const rows = [];
-            for (let i = 0; i < filteredEvents.length; i += itemsPerRow) {
-              rows.push(filteredEvents.slice(i, i + itemsPerRow));
-            }
-
-            return (
-              <div className="flex flex-col gap-32">
-                {rows.map((row, rowIndex) => (
-                  <div 
-                    key={rowIndex} 
-                    className={`flex flex-col md:flex-row gap-8 md:gap-1 relative items-center justify-start ${rowIndex % 2 === 1 ? 'md:flex-row-reverse' : ''}`}
-                  >
-                    {/* Horizontal Connector Line for this row */}
-                    <div className={`hidden md:block absolute top-[52px] h-[4px] border-t-2 border-dashed border-blue-400/40 -z-10 ${
-                      row.length > 1 
-                        ? (rowIndex % 2 === 0 ? 'left-[16.6%] right-[16.6%]' : 'right-[16.6%] left-[16.6%]') 
-                        : 'hidden'
-                    }`} />
-
-                    {row.map((event, eventIndex) => {
-                      const absoluteIndex = rowIndex * itemsPerRow + eventIndex;
-                      const isLastInRow = eventIndex === row.length - 1;
-                      const isLastOverall = absoluteIndex === filteredEvents.length - 1;
-                      const statusColor = getStatusColor(event);
-
-                      return (
-                        <div 
-                          key={event.id} 
-                          className="w-full md:w-1/3 relative z-10 animate-in zoom-in-90 duration-500 flex flex-col items-center"
-                          style={{ animationDelay: `${eventIndex * 100}ms` }}
-                        >
-                          {/* Serpentine Vertical Connector */}
-                          {isLastInRow && !isLastOverall && (
-                            <div className={`hidden md:block absolute top-[52px] h-[190px] w-[2px] border-l-2 border-dashed border-blue-400/40 -z-10 ${rowIndex % 2 === 0 ? 'right-[50%] translate-x-[150px]' : 'left-[50%] -translate-x-[150px]'}`}>
-                               <div className={`absolute bottom-0 w-[150px] h-[2px] border-t-2 border-dashed border-blue-400/40 ${rowIndex % 2 === 0 ? 'right-0' : 'left-0'}`} />
-                            </div>
-                          )}
-
-                          {/* Connector Node */}
-                          <div className={`w-10 h-10 rounded-full border-[6px] border-white shadow-lg z-20 transition-all hover:scale-125 flex items-center justify-center ${
-                            event.isControlPoint ? 'bg-yellow-400' : 'bg-blue-500'
-                          }`}>
-                            {event.isControlPoint ? <Star size={14} className="text-white" fill="white" /> : <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                          </div>
-
-                          {/* Event Card */}
-                          <div 
-                            onClick={() => onSelectEvent(event.id!)}
-                            className={`group relative mt-10 p-6 w-[90%] rounded-[2.5rem] border-2 transition-all cursor-pointer shadow-md hover:shadow-2xl hover:-translate-y-3 ${
-                              event.isControlPoint 
-                              ? 'bg-yellow-50/90 border-yellow-200 hover:border-yellow-400 backdrop-blur-sm' 
-                              : 'bg-white border-slate-100 hover:border-blue-400'
-                            }`}
-                          >
-                            <div className="flex flex-col gap-3">
-                              <div className="flex justify-between items-center">
-                                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
-                                  event.isControlPoint ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 'bg-blue-50 text-blue-600'
-                                }`}>
-                                  {format(new Date(event.date + 'T00:00:00'), "dd 'de' MMM", { locale: ptBR })}
-                                </span>
-                                {event.isControlPoint && <AlertTriangle size={14} className="text-yellow-600 animate-pulse" />}
-                              </div>
-                              
-                              <h4 className="text-base font-bold text-slate-900 group-hover:text-blue-700 leading-tight transition-colors line-clamp-2 min-h-[3rem]">
-                                {event.title}
-                              </h4>
-                              
-                              <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed italic border-t border-slate-50 pt-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                                {event.description}
-                              </p>
-
-                              <div className="flex items-center justify-between mt-2 pt-2">
-                                <div className="flex -space-x-1.5">
-                                  <div className="w-6 h-6 rounded-full bg-slate-100 border border-white flex items-center justify-center text-[7px] font-black text-slate-500">ZE</div>
-                                  <div className="w-6 h-6 rounded-full bg-blue-100 border border-white flex items-center justify-center text-[7px] font-black text-blue-600">CRE</div>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[8px] font-black text-slate-300 uppercase letter-spacing-widest">Detalhes</span>
-                                  <ChevronRight size={10} className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
         </div>
       )}
 
