@@ -63,6 +63,29 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+function cleanUndefined<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
+  }
+  const isPlainObj = Object.getPrototypeOf(obj) === Object.prototype;
+  const isArr = Array.isArray(obj);
+  if (!isPlainObj && !isArr) {
+    return obj;
+  }
+  const copy = (isArr ? [...(obj as any)] : { ...(obj as any) }) as any;
+  for (const key in copy) {
+    if (Object.prototype.hasOwnProperty.call(copy, key)) {
+      const val = copy[key];
+      if (val === undefined) {
+        delete copy[key];
+      } else if (typeof val === 'object' && val !== null) {
+        copy[key] = cleanUndefined(val);
+      }
+    }
+  }
+  return copy as T;
+}
+
 export async function seedInitialData() {
   const path = 'events';
   try {
@@ -248,11 +271,11 @@ export const getDocumentsByEvent = async (eventId: string) => {
 export const createEvent = async (event: Omit<CalendarEvent, 'id'>) => {
     const path = 'events';
     try {
-        const eventWithMeta = {
+        const eventWithMeta = cleanUndefined({
             ...event,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-        };
+        });
         const ref = await addDoc(collection(db, path), eventWithMeta);
         return { ...eventWithMeta, id: ref.id };
     } catch (error) {
@@ -264,10 +287,10 @@ export const createEvent = async (event: Omit<CalendarEvent, 'id'>) => {
 export const updateEvent = async (id: string, event: Partial<CalendarEvent>) => {
     const path = `events/${id}`;
     try {
-        const eventWithMeta = {
+        const eventWithMeta = cleanUndefined({
             ...event,
             updatedAt: new Date().toISOString()
-        };
+        });
         await updateDoc(doc(db, 'events', id), eventWithMeta);
     } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, path);
@@ -307,11 +330,11 @@ export const deleteEvent = async (id: string) => {
 export const createTask = async (task: Omit<Task, 'id'>) => {
     const path = 'tasks';
     try {
-        const taskWithMeta = {
+        const taskWithMeta = cleanUndefined({
             ...task,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-        };
+        });
         const ref = await addDoc(collection(db, path), taskWithMeta);
         return { ...taskWithMeta, id: ref.id };
     } catch (error) {
@@ -323,10 +346,10 @@ export const createTask = async (task: Omit<Task, 'id'>) => {
 export const updateTask = async (id: string, task: Partial<Task>) => {
     const path = `tasks/${id}`;
     try {
-        const taskWithMeta = {
+        const taskWithMeta = cleanUndefined({
             ...task,
             updatedAt: new Date().toISOString()
-        };
+        });
         await updateDoc(doc(db, 'tasks', id), taskWithMeta);
     } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, path);
@@ -371,8 +394,9 @@ export const getResponsibleUnits = async () => {
 export const createResponsibleUnit = async (unit: Omit<ResponsibleUnit, 'id'>) => {
     const path = 'responsibleUnits';
     try {
-        const ref = await addDoc(collection(db, path), unit);
-        return { ...unit, id: ref.id };
+        const cleanedUnit = cleanUndefined(unit);
+        const ref = await addDoc(collection(db, path), cleanedUnit);
+        return { ...cleanedUnit, id: ref.id };
     } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, path);
         throw error;
@@ -382,7 +406,7 @@ export const createResponsibleUnit = async (unit: Omit<ResponsibleUnit, 'id'>) =
 export const updateResponsibleUnit = async (id: string, unit: Partial<ResponsibleUnit>) => {
     const path = `responsibleUnits/${id}`;
     try {
-        await updateDoc(doc(db, 'responsibleUnits', id), unit);
+        await updateDoc(doc(db, 'responsibleUnits', id), cleanUndefined(unit));
     } catch (error) {
         handleFirestoreError(error, OperationType.UPDATE, path);
     }
