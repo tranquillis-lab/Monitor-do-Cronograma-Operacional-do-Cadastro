@@ -90,7 +90,11 @@ export async function seedInitialData() {
   const path = 'events';
   try {
     const eventsSnap = await getDocs(collection(db, path));
-    if (!eventsSnap.empty) return; // Already seeded
+    if (!eventsSnap.empty) {
+      // Already seeded, but let's run repair on startup to fix any corrupted or mismatched months
+      await repairDataInvariants();
+      return;
+    }
 
     console.log('Seeding initial data...');
     const lines = RAW_SCHEDULE_CSV.split('\n');
@@ -496,17 +500,21 @@ export const repairDataInvariants = async () => {
             let needsUpdate = false;
             const update: any = {};
 
-            // Fix corrupted months
-            const monthLower = (data.month || '').toLowerCase();
-            const monthIsCorrupted = /^\d/.test(data.month || '') || 
-                                   ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'].some(day => monthLower.includes(day));
-            
-            if (monthIsCorrupted || !data.month) {
+            // Fix corrupted or MISMATCHED months
+            if (data.date) {
                 const eventDate = new Date(data.date + 'T00:00:00');
                 const months = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
                 const correctMonth = `${months[eventDate.getMonth()]} DE ${eventDate.getFullYear()}`;
-                update.month = correctMonth;
-                needsUpdate = true;
+
+                const monthLower = (data.month || '').trim().toLowerCase();
+                const correctMonthLower = correctMonth.toLowerCase();
+                const monthIsCorrupted = /^\d/.test(data.month || '') || 
+                                       ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'].some(day => monthLower.includes(day));
+                
+                if (monthIsCorrupted || !data.month || monthLower !== correctMonthLower) {
+                    update.month = correctMonth;
+                    needsUpdate = true;
+                }
             }
 
             // Fix corrupted titles (if title is identical to another date format or corrupted)

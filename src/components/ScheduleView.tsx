@@ -834,7 +834,24 @@ export default function ScheduleView({ onSelectEvent, isAdmin, isEmbedded = fals
                                 type="date" 
                                 required
                                 value={formData.date}
-                                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                onChange={(e) => {
+                                    const newDate = e.target.value;
+                                    let newMonth = formData.month;
+                                    if (newDate) {
+                                        try {
+                                            const d = new Date(newDate + 'T00:00:00');
+                                            const months = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+                                            newMonth = `${months[d.getMonth()]} DE ${d.getFullYear()}`;
+                                        } catch (err) {
+                                            console.error('Erro ao converter data para mês:', err);
+                                        }
+                                    }
+                                    setFormData({
+                                        ...formData,
+                                        date: newDate,
+                                        month: newMonth
+                                    });
+                                }}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-900 outline-none transition-all"
                             />
                         </div>
